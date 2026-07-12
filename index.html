@@ -353,20 +353,42 @@ function estadoVencimiento(p){
   return null;
 }
 function renderAlertas(){
-  const vencidas=[], proximas=[];
+  const vencidas=[], proximas=[], bajaReciente=[];
+
   padron.forEach(p=>{
+    // Solo externos y contratistas
+    if(!['externo','contratista'].includes(p.padron)) return;
+
+    // 1. Bajas recientes (últimos 10 días)
+    if(p.situacion==='Dado de Baja'&&p.bajaFecha){
+      const dias=diasHasta(p.bajaFecha);
+      if(dias!==null&&dias>=-10&&dias<=0){
+        bajaReciente.push({p,diasBaja:Math.abs(dias)});
+      }
+      return; // no procesar vencimiento si está de baja
+    }
+
+    // 2. Vencimientos (solo activos)
     const ev=estadoVencimiento(p);
     if(!ev) return;
     if(ev.tipo==='vencida') vencidas.push({p,ev});
     else proximas.push({p,ev});
   });
-  // Ordenar por días
+
+  // Ordenar
   vencidas.sort((a,b)=>b.ev.dias-a.ev.dias);
   proximas.sort((a,b)=>a.ev.dias-b.ev.dias);
+  bajaReciente.sort((a,b)=>a.diasBaja-b.diasBaja);
+
   const panel=document.getElementById('panelAlertas');
   if(!panel) return;
-  if(!vencidas.length&&!proximas.length){panel.innerHTML='';return;}
+  if(!vencidas.length&&!proximas.length&&!bajaReciente.length){
+    panel.innerHTML='';return;
+  }
+
   let html='<div class="alertas">';
+
+  // Vencidas
   if(vencidas.length){
     html+='<div class="alertas-titulo">⛔ Autorizaciones vencidas</div>';
     vencidas.forEach(({p,ev})=>{
@@ -379,6 +401,8 @@ function renderAlertas(){
       </div>`;
     });
   }
+
+  // Por vencer
   if(proximas.length){
     html+='<div class="alertas-titulo" style="margin-top:10px">⚠️ Por vencer (próximos 10 días)</div>';
     proximas.forEach(({p,ev})=>{
@@ -391,6 +415,23 @@ function renderAlertas(){
       </div>`;
     });
   }
+
+  // Bajas recientes
+  if(bajaReciente.length){
+    html+='<div class="alertas-titulo" style="margin-top:10px">🚫 Dados de baja recientemente</div>';
+    bajaReciente.forEach(({p,diasBaja})=>{
+      const idx=padron.indexOf(p);
+      const label=diasBaja===0?'Hoy':diasBaja===1?'Ayer':'Hace '+diasBaja+'d';
+      const etiq=p.padron==='contratista'?'Contratista':'Externo';
+      html+=`<div class="alerta-item" style="background:rgba(180,0,0,.12);border:1px solid rgba(220,50,50,.3)" onclick="mostrarResultado(padron[${idx}])">
+        <div class="alerta-dot" style="background:#cc2200;box-shadow:0 0 8px rgba(200,30,0,.5)"></div>
+        <span class="alerta-nombre">${p.nombre}</span>
+        <span class="alerta-badge" style="background:rgba(200,30,0,.2);color:#e05040;border:1px solid rgba(200,30,0,.4)">${etiq} · ${p.motivoBaja||'Baja'}</span>
+        <span class="alerta-fecha">${label}</span>
+      </div>`;
+    });
+  }
+
   html+='</div>';
   panel.innerHTML=html;
 }
