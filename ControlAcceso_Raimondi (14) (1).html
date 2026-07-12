@@ -1,0 +1,860 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="theme-color" content="#0d0f14">
+<title>Control de Acceso — Hogar Raimondi</title>
+<link href="https://fonts.googleapis.com/css2?family=Syne:wght@400;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#0d0f14;--bg2:#13161e;--bg3:#1a1e2a;
+  --border:rgba(255,255,255,.07);--border2:rgba(255,255,255,.13);
+  --text:#e8eaf2;--text2:#7b8099;--text3:#3d4255;
+  --sans:'Syne',sans-serif;--mono:'JetBrains Mono',monospace;
+}
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+html,body{height:100%;overflow:hidden}
+body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex;flex-direction:column}
+
+/* HEADER */
+.hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 16px 12px;flex-shrink:0}
+.hdr-top{display:flex;align-items:center;gap:10px;margin-bottom:11px}
+.hdr-logo{width:36px;height:36px;background:linear-gradient(135deg,#00c96a,#4d9fff);border-radius:9px;display:flex;align-items:center;justify-content:center;font-size:14px;font-weight:800;color:#0d0f14;flex-shrink:0;letter-spacing:-.5px}
+.hdr-titulo{font-size:17px;font-weight:800;letter-spacing:.3px}
+.hdr-sub{font-size:12px;color:var(--text2);font-family:var(--mono);margin-top:1px;display:flex;align-items:center;gap:5px}
+.sync-dot{width:7px;height:7px;border-radius:50%;flex-shrink:0;background:#3d4255;transition:background .4s}
+.search-wrap{position:relative}
+.search-input{width:100%;background:var(--bg3);border:1px solid var(--border2);border-radius:10px;padding:13px 42px 13px 46px;font-size:18px;color:var(--text);font-family:var(--sans);outline:none;transition:border .2s}
+.search-input:focus{border-color:rgba(255,255,255,.25)}
+.search-input::placeholder{color:var(--text3)}
+.s-ico{position:absolute;left:14px;top:50%;transform:translateY(-50%);font-size:18px;color:var(--text3);pointer-events:none}
+.s-clr{position:absolute;right:12px;top:50%;transform:translateY(-50%);background:none;border:none;color:var(--text3);font-size:20px;cursor:pointer;display:none}
+
+/* CONTENT */
+.content{flex:1;overflow-y:auto;-webkit-overflow-scrolling:touch}
+
+/* ESTADO VACÍO */
+.vacio{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;text-align:center;padding:2rem;gap:14px}
+.vacio-ico{font-size:52px;opacity:.3}
+.vacio p{font-size:13px;color:var(--text3);font-family:var(--mono);line-height:1.8}
+
+/* MÚLTIPLES RESULTADOS */
+.multi-wrap{padding:14px 16px}
+.multi-hint{font-size:11px;color:var(--text3);font-family:var(--mono);margin-bottom:10px}
+.multi-item{display:flex;align-items:center;gap:12px;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;padding:13px 14px;margin-bottom:7px;cursor:pointer}
+.multi-item:active{background:var(--bg3)}
+.m-dot{width:10px;height:10px;border-radius:50%;flex-shrink:0}
+.m-nombre{font-size:16px;font-weight:600;color:var(--text)}
+.m-sub{font-size:13px;color:var(--text2);margin-top:3px;font-family:var(--mono)}
+
+/* OVERLAY RESULTADO */
+.rov{display:none;position:fixed;inset:0;z-index:90;flex-direction:column;align-items:center;justify-content:flex-start;padding:0;overflow-y:auto}
+.rov.show{display:flex;animation:fi .2s ease}
+@keyframes fi{from{opacity:0;transform:scale(.97)}to{opacity:1;transform:scale(1)}}
+
+/* Fondos por situación */
+.c-verde      {background:#0a5c2e}
+.c-rojo       {background:#8b0000}
+.c-rojofuerte {background:#5a0000}
+.c-gris       {background:#1e2030}
+.c-amarillo   {background:#6b4c00}
+
+/* SELLO SVG — contenedor */
+.rov-sello{width:100%;max-width:420px;display:flex;flex-direction:column;align-items:center;padding:30px 20px 0}
+.rov-sello-img{width:110px;height:110px;margin-bottom:14px;filter:drop-shadow(0 4px 16px rgba(0,0,0,.4))}
+
+/* Nombre y DNI */
+.rov-nombre{font-size:26px;font-weight:700;color:#fff;text-align:center;font-style:italic;margin-bottom:4px;text-shadow:0 2px 8px rgba(0,0,0,.3);line-height:1.2}
+.rov-dni{font-size:15px;color:rgba(255,255,255,.75);text-align:center;margin-bottom:20px;font-family:var(--mono);letter-spacing:.5px}
+
+/* BLOQUE CATEGORÍA — el grande central */
+.rov-cat{width:100%;max-width:420px;background:rgba(0,0,0,.3);border-radius:16px;padding:18px 20px;margin:0 20px 12px;text-align:center;box-sizing:border-box}
+.rov-cat-titulo{font-size:24px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px;line-height:1.25;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+.rov-cat-sub{font-size:18px;font-weight:800;color:#fff;text-transform:uppercase;letter-spacing:.5px;margin-top:4px;text-shadow:0 2px 6px rgba(0,0,0,.4)}
+
+/* BLOQUE DATOS — filas label/valor */
+.rov-datos{width:100%;max-width:420px;background:rgba(0,0,0,.2);border-radius:14px;padding:14px 18px;margin:0 20px 10px;box-sizing:border-box}
+.rov-fila{display:flex;justify-content:space-between;align-items:flex-start;gap:10px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.08)}
+.rov-fila:last-child{border-bottom:none;padding-bottom:0}
+.rov-fila-lbl{font-size:14px;color:rgba(255,255,255,.65);flex-shrink:0}
+.rov-fila-val{font-size:15px;color:#fff;font-weight:700;text-align:right;line-height:1.35;text-transform:uppercase}
+
+/* CHIP salida residente */
+.rov-chip{display:inline-flex;align-items:center;gap:6px;padding:8px 20px;border-radius:24px;font-size:16px;font-weight:800;margin-bottom:10px}
+.chip-libre{background:rgba(0,233,122,.25);color:#00ff8c;border:2px solid rgba(0,233,122,.5);box-shadow:0 0 20px rgba(0,233,122,.3)}
+.chip-rest{background:rgba(255,50,50,.3);color:#fff;border:2px solid rgba(255,80,80,.6);box-shadow:0 0 20px rgba(255,50,50,.4)}
+
+/* BLOQUE PUESTOS */
+.rov-puestos{width:100%;max-width:420px;background:rgba(0,0,0,.2);border-radius:14px;padding:12px 18px;margin:0 20px 10px;box-sizing:border-box}
+.rov-puestos-lbl{font-size:12px;color:rgba(255,255,255,.55);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:5px}
+.rov-puestos-val{font-size:17px;color:#fff;font-weight:800}
+.rov-puestos-mod{font-size:13px;color:rgba(255,255,255,.65);margin-top:3px;font-family:var(--mono)}
+
+/* BLOQUE PAPEL */
+.rov-papel{width:100%;max-width:420px;background:rgba(0,0,0,.2);border-radius:14px;padding:12px 18px;margin:0 20px 10px;box-sizing:border-box;text-align:center}
+.rov-papel-lbl{font-size:12px;color:rgba(255,255,255,.55);font-family:var(--mono);text-transform:uppercase;letter-spacing:.5px;margin-bottom:4px}
+.rov-papel-val{font-size:20px;color:#fff;font-weight:800;font-family:var(--mono);letter-spacing:1px}
+
+/* BLOQUE PROTOCOLO */
+.rov-proto{width:100%;max-width:420px;background:rgba(0,0,0,.3);border-radius:14px;padding:14px 18px;margin:0 20px 16px;box-sizing:border-box;text-align:center;border:1px solid rgba(255,255,255,.15)}
+.rov-proto p{font-size:16px;color:#fff;line-height:1.6;font-weight:700}
+
+/* CERRAR */
+.btn-cerrar{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);border-radius:14px;color:#fff;font-size:15px;font-weight:800;font-family:var(--sans);padding:14px 52px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;transition:background .15s}
+.btn-cerrar:active{background:rgba(255,255,255,.25)}
+
+/* VENCIMIENTO */
+.c-naranja{background:linear-gradient(155deg,#7a3500 0%,#c05a00 100%)}
+
+/* PANEL ALERTAS */
+.alertas{padding:12px 16px}
+.alertas-titulo{font-size:11px;font-family:var(--mono);text-transform:uppercase;letter-spacing:.6px;color:var(--text3);margin-bottom:8px;font-weight:700}
+.alerta-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer}
+.alerta-item:active{opacity:.8}
+.alerta-vencida{background:rgba(180,70,0,.15);border:1px solid rgba(220,100,0,.35)}
+.alerta-proxima{background:rgba(180,130,0,.12);border:1px solid rgba(220,180,0,.3)}
+.alerta-dot{width:9px;height:9px;border-radius:50%;flex-shrink:0}
+.dot-naranja{background:#e06000;box-shadow:0 0 8px rgba(220,100,0,.5)}
+.dot-amarillo{background:#d4a000;box-shadow:0 0 8px rgba(210,160,0,.4)}
+.alerta-nombre{font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.alerta-badge{font-size:10px;font-weight:800;padding:3px 7px;border-radius:5px;flex-shrink:0;white-space:nowrap}
+.badge-vencida{background:rgba(220,80,0,.25);color:#e08040;border:1px solid rgba(220,80,0,.4)}
+.badge-proxima{background:rgba(200,160,0,.2);color:#c8a000;border:1px solid rgba(200,160,0,.35)}
+.alerta-fecha{font-size:11px;color:var(--text2);font-family:var(--mono);flex-shrink:0}
+
+/* Salto de línea entre sello y contenido */
+.rov-sep{width:100%;max-width:420px;height:1px;background:rgba(255,255,255,.1);margin:0 20px 16px}
+
+/* DATOS DE MUESTRA — se usan hasta que Sheets esté conectado */
+</style>
+</head>
+<body>
+
+<!-- OVERLAY RESULTADO -->
+<div class="rov" id="rov">
+  <!-- Sello + nombre -->
+  <div class="rov-sello">
+    <div class="rov-sello-img" id="rSello"></div>
+    <div class="rov-nombre" id="rNombre"></div>
+    <div class="rov-dni"    id="rDni"></div>
+  </div>
+  <!-- Separador -->
+  <div class="rov-sep"></div>
+  <!-- Categoría -->
+  <div class="rov-cat" id="rCat" style="display:none">
+    <div class="rov-cat-titulo" id="rCatTitulo"></div>
+    <div class="rov-cat-sub"   id="rCatSub"></div>
+  </div>
+  <!-- Chip salida residente -->
+  <div id="rChipWrap" style="display:none;width:100%;max-width:420px;text-align:center;margin-bottom:10px">
+    <span class="rov-chip" id="rChip"></span>
+  </div>
+  <!-- Datos -->
+  <div class="rov-datos" id="rDatos" style="display:none"></div>
+  <!-- Puestos -->
+  <div class="rov-puestos" id="rPuestos" style="display:none">
+    <div class="rov-puestos-lbl">🚪 Puede ingresar y egresar por</div>
+    <div class="rov-puestos-val" id="rPuestosVal"></div>
+    <div class="rov-puestos-mod" id="rP4mod" style="display:none"></div>
+  </div>
+  <!-- Protocolo -->
+  <div class="rov-proto" id="rProto" style="display:none">
+    <p id="rProtoTxt"></p>
+  </div>
+  <!-- Papel -->
+  <div class="rov-papel" id="rPapel" style="display:none">
+    <div class="rov-papel-lbl">📁 Respaldo en papel</div>
+    <div class="rov-papel-val" id="rPapelVal"></div>
+  </div>
+  <button class="btn-cerrar" onclick="cerrar()">Cerrar</button>
+</div>
+
+<!-- HEADER -->
+<div class="hdr">
+  <div class="hdr-top">
+    <div class="hdr-logo">CA</div>
+    <div>
+      <div class="hdr-titulo">Control de Acceso</div>
+      <div class="hdr-sub">
+        <span class="sync-dot" id="syncDot"></span>
+        <span id="syncTxt">Hogar Raimondi — Necochea</span>
+      </div>
+    </div>
+  </div>
+  <div class="search-wrap">
+    <span class="s-ico">⌕</span>
+    <input class="search-input" type="text" id="srch"
+      placeholder="DNI o apellido y nombre (mín. 4 letras)…"
+      oninput="buscar(this)" autocomplete="off"
+      autocorrect="off" spellcheck="false">
+    <button class="s-clr" id="sclr" onclick="limpiar()">✕</button>
+  </div>
+</div>
+
+<!-- CONTENT -->
+<div class="content" id="cnt">
+  <div id="panelAlertas"></div>
+  <div class="vacio" id="vacioMsg">
+    <div class="vacio-ico">🏠</div>
+    <p>Ingresá DNI o apellido<br>y nombre para consultar</p>
+  </div>
+</div>
+
+<script>
+'use strict';
+
+// ══════════════════════════════════════════
+// CONFIG
+// ══════════════════════════════════════════
+const SHEETS_URL = 'https://script.google.com/macros/s/AKfycbyaEH1goxV7afLPpOu5c3Ejh_8-Tm_uofmRgBYA-iSGrclradfoKbKDbaoJ-N9ZTRx8zg/exec';
+const CACHE_KEY  = 'raimondi_v3'; // v3: soporte multi-pestaña
+
+const MOTIVOS_GRAVES = [
+  'Medida Judicial',
+  'Medida Judicial / Restricción perimetral',
+  'Antecedentes de Sustracción o Hurto',
+  'Protección de la Salud Física y Mental'
+];
+
+// ══════════════════════════════════════════
+// DATOS DE MUESTRA (hasta conectar Sheets)
+// ══════════════════════════════════════════
+const MUESTRA = [
+  // Bagala - Planta permanente
+  {padron:'bagala',nombre:'López, Carlos Alberto',dni:'25789654',tel:'2262 123456',
+   situacion:'Activo',altaFecha:'15/01/26',bTipo:'Empleado de Planta Permanente',bArea:'Cocina',
+   bHorario:'Tarde/Noche',puestos:['Puesto N° 1'],p4mod:[],carpeta:'1',hoja:'3',obs:''},
+  // Bagala - Referente
+  {padron:'bagala',nombre:'Bagalá, Marcelo',dni:'18001122',tel:'',
+   situacion:'Activo',bTipo:'Referente de la Firma Bagala',bArea:'',
+   bHorario:'',puestos:['Puesto N° 1','Puesto N° 2','Puesto N° 4'],
+   p4mod:['Con vehículo particular'],carpeta:'1',hoja:'1',obs:''},
+  // Bagala - Dado de baja
+  {padron:'bagala',nombre:'Gómez, Patricia',dni:'27654987',tel:'',
+   situacion:'Dado de Baja',bTipo:'Empleado de Planta Permanente',bArea:'Limpieza',
+   bHorario:'Mañana/Tarde',motivoBaja:'Renuncia',bajaFecha:'12/05/26',
+   puestos:[],p4mod:[],carpeta:'1',hoja:'8',obs:''},
+  // Municipal
+  {padron:'municipal',nombre:'Martínez, Ana Paula',dni:'22334455',tel:'2262 998877',
+   situacion:'Activo',mCargo:'Directora',mTurno:'Semana - Mañana',mRef:'Sí',
+   puestos:['Puesto N° 1','Puesto N° 2'],p4mod:[],carpeta:'2',hoja:'1',obs:''},
+  // Municipal - baja
+  {padron:'municipal',nombre:'Torres, Luis',dni:'29112233',tel:'',
+   situacion:'Dado de Baja',mCargo:'Enfermero',mTurno:'Semana - Noche',mRef:'No',
+   motivoBaja:'Despido',bajaFecha:'03/06/26',puestos:[],p4mod:[],carpeta:'2',hoja:'5',obs:''},
+  // Residente - salida libre
+  {padron:'residente',nombre:'González, Hilda Beatriz',dni:'05678901',tel:'',
+   situacion:'Activo',rPab:'Pabellón N° 1',rSal:'Salida Libre',
+   puestos:['Puesto N° 1','Puesto N° 4'],p4mod:['En remis, solo'],
+   carpeta:'3',hoja:'2',obs:'Persona en silla de ruedas'},
+  // Residente - salida restringida
+  {padron:'residente',nombre:'Pérez, Antonio',dni:'04321098',tel:'',
+   situacion:'Activo',rPab:'Enfermería',rSal:'Salida Restringida',
+   puestos:[],p4mod:[],carpeta:'3',hoja:'4',obs:'No sale sin acompañante del personal'},
+  // Residente - fallecido
+  {padron:'residente',nombre:'Acosta, Teresa',dni:'4454398',tel:'',
+   situacion:'Dado de Baja',rPab:'Pabellón N° 2',rSal:'Salida Libre',
+   motivoBaja:'Fallecimiento',bajaFecha:'01/06/26',puestos:[],p4mod:[],
+   carpeta:'3',hoja:'7',obs:'Persona en silla de ruedas, siempre suele andar junto a un residente o con algún agente'},
+  // Externo - autorizado
+  {padron:'externo',nombre:'García, Juan Manuel',dni:'31567890',tel:'2262 444555',
+   situacion:'Activo',altaFecha:'01/03/26',eTit:'Familiar de un Residente',eRes:'Familiar de Hilda González — Pab. 1',
+   eTipo:'Recurrente',eAut:'Directora Martínez',
+   puestos:['Puesto N° 1'],p4mod:[],carpeta:'4',hoja:'2',obs:'Visita domingos por la tarde'},
+  // Externo - denegado grave
+  {padron:'externo',nombre:'Silva, Roberto',dni:'26789012',tel:'',
+   situacion:'Dado de Baja',eTit:'Vendedor / Proveedor',eRes:'',eTipo:'Esporádico',
+   motivoBaja:'Antecedentes de Sustracción o Hurto',bajaFecha:'20/04/26',
+   puestos:[],p4mod:[],carpeta:'4',hoja:'9',obs:'NO PERMITIR INGRESO BAJO NINGUNA CIRCUNSTANCIA'},
+  // Externo - buffet (nuevo)
+  {padron:'externo',nombre:'Rodríguez, Claudia',dni:'28556677',tel:'2262 888999',
+   situacion:'Activo',altaFecha:'20/06/26',eTit:'Buffet',eRes:'Concesionaria del buffet interno',
+   eTipo:'Recurrente',eAut:'Directora Martínez',
+   puestos:['Puesto N° 1'],p4mod:[],carpeta:'4',hoja:'5',obs:''},
+  // Residente - egreso definitivo
+  {padron:'residente',nombre:'Fernández, Jorge',dni:'07889900',tel:'',
+   situacion:'Dado de Baja',altaFecha:'10/01/25',bajaFecha:'25/06/26',
+   rPab:'Pabellón N° 1',rSal:'Salida Libre',
+   motivoBaja:'Egreso Definitivo del Hogar',
+   puestos:[],p4mod:[],carpeta:'3',hoja:'9',obs:'Egresó con su familia'},
+  // Contratista - vencimiento próximo (8 días)
+  {padron:'contratista',nombre:'Herrera, Pablo',dni:'29887766',tel:'2262 111222',
+   situacion:'Activo',altaFecha:'01/06/26',vencimiento:'18/07/26',
+   cArea:'Albañiles',cCondicion:'Solo cuando haya personal Bagala en la institución',
+   cAutorizadoPor:'Bagala S.A.',cAgente:'Referente Bagala',
+   puestos:['Puesto N° 2'],p4mod:[],carpeta:'5',hoja:'4',obs:''},
+  // Contratista - vencido
+  {padron:'contratista',nombre:'Méndez, Roberto',dni:'31223344',tel:'',
+   situacion:'Activo',altaFecha:'01/05/26',vencimiento:'01/07/26',
+   cArea:'Electricista',cCondicion:'Acceso libre - previo aviso al hogar',
+   cAutorizadoPor:'Hogar Raimondi',cAgente:'Directora Martínez',
+   puestos:['Puesto N° 1'],p4mod:[],carpeta:'5',hoja:'7',obs:''},
+  // Contratista - autorizado por Bagala
+  {padron:'contratista',nombre:'Ruiz, Hernán',dni:'32001188',tel:'2262 555666',
+   situacion:'Activo',cArea:'Electricista',
+   cCondicion:'Solo cuando haya personal Bagala en la institución',
+   cAutorizadoPor:'Bagala S.A.',cAgente:'Jefe Bagala — Sánchez',
+   puestos:['Puesto N° 2'],p4mod:[],carpeta:'5',hoja:'1',obs:''},
+  // Contratista - autorizado por el Hogar
+  {padron:'contratista',nombre:'Vera, Diego',dni:'33445566',tel:'',
+   situacion:'Activo',cArea:'Parquero',
+   cCondicion:'Acceso libre — previo aviso al hogar',
+   cAutorizadoPor:'Hogar Raimondi',cAgente:'Directora Martínez',
+   puestos:['Puesto N° 2'],p4mod:[],carpeta:'5',hoja:'3',obs:'Viene martes y jueves'},
+  // Contratista - dado de baja
+  {padron:'contratista',nombre:'Suárez, Pablo',dni:'30998877',tel:'',
+   situacion:'Dado de Baja',cArea:'Albañil',
+   cCondicion:'',cAutorizadoPor:'Bagala S.A.',cAgente:'',
+   motivoBaja:'Terminación de Contrato',bajaFecha:'15/05/26',
+   puestos:[],p4mod:[],carpeta:'5',hoja:'6',obs:''},
+];
+
+// ══════════════════════════════════════════
+// ESTADO
+// ══════════════════════════════════════════
+let padron = [];
+
+// ══════════════════════════════════════════
+// SYNC
+// ══════════════════════════════════════════
+function norm(s){
+  return(s||'').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g,'').trim();
+}
+function setSyncStatus(ok,txt){
+  document.getElementById('syncDot').style.background = ok?'#00e97a':'#ffb830';
+  document.getElementById('syncTxt').textContent = txt;
+}
+// ── VENCIMIENTO ──────────────────────────────────────────────────────
+function fechaDesdeStr(s){
+  if(!s||s.length<6) return null;
+  try{
+    const parts=s.split('/');
+    if(parts.length!==3) return null;
+    const d=parseInt(parts[0]),m=parseInt(parts[1])-1;
+    const y=parseInt(parts[2])+(parseInt(parts[2])<100?2000:0);
+    return new Date(y,m,d);
+  }catch(e){return null;}
+}
+function diasHasta(fechaStr){
+  const f=fechaDesdeStr(fechaStr);
+  if(!f) return null;
+  const hoy=new Date(); hoy.setHours(0,0,0,0);
+  return Math.round((f-hoy)/(1000*60*60*24));
+}
+function estadoVencimiento(p){
+  if(!p.vencimiento||p.situacion!=='Activo') return null;
+  if(!['externo','contratista'].includes(p.padron)) return null;
+  const dias=diasHasta(p.vencimiento);
+  if(dias===null) return null;
+  if(dias<0)  return{tipo:'vencida', dias:Math.abs(dias), label:'VENCIDA hace '+Math.abs(dias)+'d'};
+  if(dias<=10) return{tipo:'proxima', dias, label:'Vence en '+dias+' día'+(dias===1?'':'s')};
+  return null;
+}
+function renderAlertas(){
+  const vencidas=[], proximas=[];
+  padron.forEach(p=>{
+    const ev=estadoVencimiento(p);
+    if(!ev) return;
+    if(ev.tipo==='vencida') vencidas.push({p,ev});
+    else proximas.push({p,ev});
+  });
+  // Ordenar por días
+  vencidas.sort((a,b)=>b.ev.dias-a.ev.dias);
+  proximas.sort((a,b)=>a.ev.dias-b.ev.dias);
+  const panel=document.getElementById('panelAlertas');
+  if(!panel) return;
+  if(!vencidas.length&&!proximas.length){panel.innerHTML='';return;}
+  let html='<div class="alertas">';
+  if(vencidas.length){
+    html+='<div class="alertas-titulo">⛔ Autorizaciones vencidas</div>';
+    vencidas.forEach(({p,ev})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="alerta-item alerta-vencida" onclick="mostrarResultado(padron[${idx}])">
+        <div class="alerta-dot dot-naranja"></div>
+        <span class="alerta-nombre">${p.nombre}</span>
+        <span class="alerta-badge badge-vencida">VENCIDA</span>
+        <span class="alerta-fecha">${p.vencimiento}</span>
+      </div>`;
+    });
+  }
+  if(proximas.length){
+    html+='<div class="alertas-titulo" style="margin-top:10px">⚠️ Por vencer (próximos 10 días)</div>';
+    proximas.forEach(({p,ev})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="alerta-item alerta-proxima" onclick="mostrarResultado(padron[${idx}])">
+        <div class="alerta-dot dot-amarillo"></div>
+        <span class="alerta-nombre">${p.nombre}</span>
+        <span class="alerta-badge badge-proxima">${ev.label}</span>
+        <span class="alerta-fecha">${p.vencimiento}</span>
+      </div>`;
+    });
+  }
+  html+='</div>';
+  panel.innerHTML=html;
+}
+
+function parsearFecha(f){
+  // Normalizar fecha si viene en formato largo de Google Sheets
+  if(!f||String(f).trim()==='') return '';
+  const s = String(f).trim();
+  if(s.length <= 10) return s; // ya es DD/MM/AA
+  try{
+    const d = new Date(s);
+    if(!isNaN(d)){
+      return String(d.getDate()).padStart(2,'0')+'/'+
+             String(d.getMonth()+1).padStart(2,'0')+'/'+
+             String(d.getFullYear()).slice(2);
+    }
+  }catch(e){}
+  return s;
+}
+
+function esNuevo(fechaStr){
+  // Devuelve true si la fecha (DD/MM/AA) es de los últimos 60 días
+  if(!fechaStr) return false;
+  try{
+    const parts = fechaStr.split('/');
+    if(parts.length!==3) return false;
+    const d = parseInt(parts[0]), m = parseInt(parts[1])-1;
+    const y = parseInt(parts[2]) + (parseInt(parts[2]) < 100 ? 2000 : 0);
+    const fecha = new Date(y, m, d);
+    const hoy = new Date();
+    const diff = (hoy - fecha) / (1000*60*60*24);
+    return diff >= 0 && diff <= 60;
+  }catch(e){ return false; }
+}
+
+function badgeNuevo(fechaStr){
+  if(!esNuevo(fechaStr)) return '';
+  return '<span style="display:inline-flex;align-items:center;background:rgba(255,220,0,.25);color:#ffe066;border:1px solid rgba(255,220,0,.5);border-radius:6px;font-size:11px;font-weight:800;padding:2px 7px;margin-left:6px;letter-spacing:.5px;vertical-align:middle">NUEVO</span>';
+}
+
+function parsearPersona(p){
+  const toArr = v => {
+    if(Array.isArray(v)) return v;
+    if(!v||String(v).trim()==='') return [];
+    return String(v).split(',').map(s=>s.trim()).filter(Boolean);
+  };
+  const limpio = {};
+  Object.keys(p).forEach(k => {
+    const kl = k.trim();
+    const v  = p[k];
+    limpio[kl] = typeof v === 'string' ? v.trim() : v;
+  });
+  return {
+    ...limpio,
+    padron:      (limpio.padron||'').toLowerCase().trim(),
+    situacion:   limpio.situacion||'Activo',
+    puestos:     toArr(limpio.puestos),
+    p4mod:       toArr(limpio.p4mod),
+    bajaFecha:   parsearFecha(limpio.bajaFecha),
+    altaFecha:   parsearFecha(limpio.altaFecha),
+    vencimiento: parsearFecha(limpio.vencimiento),
+  };
+}
+
+async function sincronizar(){
+  if(SHEETS_URL==='PENDIENTE_URL'){
+    padron = MUESTRA.map(p=>parsearPersona(p));
+    setSyncStatus(true,'✓ Datos de prueba cargados');
+    return;
+  }
+  try{
+    const url = SHEETS_URL+'?t='+Date.now();
+    const r = await fetch(url,{cache:'no-store',mode:'cors'});
+    const data = await r.json();
+    if(data.padron&&Array.isArray(data.padron)&&data.padron.length){
+      padron = data.padron.map(p=>parsearPersona(p));
+      localStorage.setItem(CACHE_KEY,JSON.stringify(padron));
+      setSyncStatus(true,'✓ Datos actualizados');
+      renderAlertas();
+    }else if(data.padron&&data.padron.length===0){
+      setSyncStatus(true,'✓ Conectado — sin datos cargados aún');
+    }
+  }catch(e){
+    const c=localStorage.getItem(CACHE_KEY);
+    if(c){try{padron=JSON.parse(c).map(p=>parsearPersona(p));setSyncStatus(false,'⚠ Sin conexión — datos guardados');}catch(e2){padron=MUESTRA.map(p=>parsearPersona(p));}}
+    else{padron=MUESTRA.map(p=>parsearPersona(p));setSyncStatus(false,'⚠ Sin conexión — datos de muestra');}
+  }
+}
+
+// ══════════════════════════════════════════
+// BÚSQUEDA
+// ══════════════════════════════════════════
+function buscar(inp){
+  const q=inp.value.trim();
+  document.getElementById('sclr').style.display=q?'block':'none';
+  const cnt=document.getElementById('cnt');
+  if(q.length<4){
+    cnt.innerHTML='<div class="vacio"><div class="vacio-ico">🏠</div><p>Ingresá al menos 4 caracteres<br>para consultar</p></div>';
+    return;
+  }
+  // Ocultar panel alertas mientras se busca
+  const pa=document.getElementById('panelAlertas');
+  if(pa) pa.innerHTML='';
+  const vm=document.getElementById('vacioMsg');
+  if(vm) vm.style.display='none';
+  const nq=norm(q);
+  // Búsqueda por coincidencia parcial en nombre, DNI o palabras sueltas
+  const palabras=nq.split(/\s+/).filter(Boolean);
+  const res=padron.filter(p=>{
+    const nn=norm(p.nombre);
+    const nd=norm(p.dni||'');
+    // Coincidencia exacta parcial (ej: "garcia")
+    if(nn.includes(nq)||nd.includes(nq)) return true;
+    // Coincidencia de todas las palabras del query en cualquier orden
+    // (ej: "juan garcia" encuentra "Garcia, Juan")
+    if(palabras.length>1&&palabras.every(pal=>nn.includes(pal)||nd.includes(pal))) return true;
+    return false;
+  });
+  if(!res.length){mostrarNoRegistrado(q);cnt.innerHTML='';return;}
+  // Solo mostrar directo si el DNI coincide exactamente
+  const dniExacto=res.find(p=>norm(p.dni)===norm(q));
+  if(dniExacto){mostrarResultado(dniExacto);cnt.innerHTML='';return;}
+  if(res.length===1){mostrarResultado(res[0]);cnt.innerHTML='';return;}
+  cnt.innerHTML='<div class="multi-wrap"><div class="multi-hint">'+res.length+' coincidencias — seleccioná:</div>'+
+    res.map((p,i)=>{
+      const {dot}=tipoColor(p);
+      const dniLabel = p.dni ? 'DNI '+p.dni : '⚠ Sin DNI';
+      return`<div class="multi-item" onclick="mostrarResultado(padron[${padron.indexOf(p)}])">
+        <div class="m-dot" style="background:${dot}"></div>
+        <div>
+          <div class="m-nombre">${p.nombre}</div>
+          <div class="m-sub">${dniLabel} · ${etiqPadron(p.padron)}</div>
+        </div>
+      </div>`;
+    }).join('')+'</div>';
+}
+function limpiar(){
+  document.getElementById('srch').value='';
+  document.getElementById('sclr').style.display='none';
+  const cnt=document.getElementById('cnt');
+  cnt.innerHTML='<div id="panelAlertas"></div><div class="vacio" id="vacioMsg"><div class="vacio-ico">🏠</div><p>Ingresá DNI o apellido<br>y nombre para consultar</p></div>';
+  renderAlertas();
+}
+
+// ══════════════════════════════════════════
+// CLASIFICACIÓN
+// ══════════════════════════════════════════
+function tipoColor(p){
+  if(p.situacion==='Activo'){
+    const ev=estadoVencimiento(p);
+    if(ev&&ev.tipo==='vencida') return{clase:'naranja',dot:'#e06000'};
+    if(ev&&ev.tipo==='proxima') return{clase:'amarillo',dot:'#d4a000'};
+    return{clase:'verde',dot:'#00e97a'};
+  }
+  if(p.motivoBaja==='Fallecimiento')           return{clase:'gris',       dot:'#6b7280'};
+  if(MOTIVOS_GRAVES.includes(p.motivoBaja))    return{clase:'rojofuerte', dot:'#ff1c2e'};
+  return{clase:'rojo',dot:'#ff4757'};
+}
+function etiqPadron(p){
+  return{
+    bagala:'Personal Bagala',
+    municipal:'Empleado Municipal',
+    residente:'Residente',
+    externo:'Persona Externa Autorizada',
+    contratista:'Contratista Eventual',
+  }[p]||p||'—';
+}
+
+// ══════════════════════════════════════════
+// MOSTRAR RESULTADO
+// ══════════════════════════════════════════
+// SVG sellos
+const SELLOS={
+  ok:`<svg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'>  <circle cx=\'100\' cy=\'100\' r=\'95\' fill=\'none\' stroke=\'rgba(255,255,255,0.9)\' stroke-width=\'6\'/>  <circle cx=\'100\' cy=\'100\' r=\'80\' fill=\'none\' stroke=\'rgba(255,255,255,0.5)\' stroke-width=\'2\'/>  <rect x=\'35\' y=\'72\' width=\'130\' height=\'56\' rx=\'8\' fill=\'rgba(255,255,255,0.15)\' stroke=\'rgba(255,255,255,0.9)\' stroke-width=\'4\'/>  <text x=\'100\' y=\'112\' text-anchor=\'middle\' font-family=\'Arial Black,Arial\' font-weight=\'900\' font-size=\'36\' fill=\'white\' letter-spacing=\'2\'>✓</text>  <path d=\'M20,100 A80,80 0 0,1 180,100\' fill=\'none\' stroke=\'rgba(255,255,255,0.7)\' stroke-width=\'2\'/>  <path d=\'M20,100 A80,80 0 0,0 180,100\' fill=\'none\' stroke=\'rgba(255,255,255,0.7)\' stroke-width=\'2\'/></svg>`,
+  no:`<svg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'>  <circle cx=\'100\' cy=\'100\' r=\'95\' fill=\'none\' stroke=\'rgba(255,255,255,0.9)\' stroke-width=\'6\'/>  <circle cx=\'100\' cy=\'100\' r=\'80\' fill=\'none\' stroke=\'rgba(255,255,255,0.5)\' stroke-width=\'2\'/>  <rect x=\'20\' y=\'72\' width=\'160\' height=\'56\' rx=\'8\' fill=\'rgba(255,255,255,0.15)\' stroke=\'rgba(255,255,255,0.9)\' stroke-width=\'4\'/>  <line x1=\'55\' y1=\'55\' x2=\'145\' y2=\'145\' stroke=\'rgba(255,255,255,0.8)\' stroke-width=\'8\' stroke-linecap=\'round\'/>  <line x1=\'145\' y1=\'55\' x2=\'55\' y2=\'145\' stroke=\'rgba(255,255,255,0.8)\' stroke-width=\'8\' stroke-linecap=\'round\'/></svg>`,
+  fall:`<svg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'>  <circle cx=\'100\' cy=\'100\' r=\'95\' fill=\'none\' stroke=\'rgba(255,255,255,0.7)\' stroke-width=\'4\' stroke-dasharray=\'8,4\'/>  <text x=\'100\' y=\'125\' text-anchor=\'middle\' font-size=\'80\'>🕊️</text></svg>`,
+  grave:`<svg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'>  <circle cx=\'100\' cy=\'100\' r=\'95\' fill=\'none\' stroke=\'rgba(255,100,100,0.9)\' stroke-width=\'6\'/>  <circle cx=\'100\' cy=\'100\' r=\'80\' fill=\'none\' stroke=\'rgba(255,100,100,0.5)\' stroke-width=\'2\'/>  <rect x=\'20\' y=\'72\' width=\'160\' height=\'56\' rx=\'8\' fill=\'rgba(255,0,0,0.2)\' stroke=\'rgba(255,100,100,0.9)\' stroke-width=\'4\'/>  <text x=\'100\' y=\'115\' text-anchor=\'middle\' font-size=\'52\'>⛔</text></svg>`,
+  warn:`<svg viewBox=\'0 0 200 200\' xmlns=\'http://www.w3.org/2000/svg\'>  <circle cx=\'100\' cy=\'100\' r=\'95\' fill=\'none\' stroke=\'rgba(255,220,0,0.9)\' stroke-width=\'6\'/>  <circle cx=\'100\' cy=\'100\' r=\'80\' fill=\'none\' stroke=\'rgba(255,220,0,0.5)\' stroke-width=\'2\'/>  <rect x=\'20\' y=\'72\' width=\'160\' height=\'56\' rx=\'8\' fill=\'rgba(255,200,0,0.15)\' stroke=\'rgba(255,220,0,0.9)\' stroke-width=\'4\'/>  <text x=\'100\' y=\'115\' text-anchor=\'middle\' font-size=\'52\'>⚠️</text></svg>`
+};
+
+function mostrarResultado(p){
+  if(!p)return;
+  const ok       = p.situacion==='Activo';
+  const fallecido= p.motivoBaja==='Fallecimiento';
+  const grave    = MOTIVOS_GRAVES.includes(p.motivoBaja);
+  const {clase}  = tipoColor(p);
+
+  const evenc=estadoVencimiento(p);
+  let selloKey,catTitulo,catSub='',proto='';
+  if(ok&&evenc&&evenc.tipo==='vencida'){
+    selloKey='warn';
+    proto='La autorización de ingreso de esta persona está VENCIDA desde el '+p.vencimiento+'. No permitir el ingreso hasta que sea renovada por la autoridad correspondiente.';
+  }else if(ok&&evenc&&evenc.tipo==='proxima'){
+    selloKey='warn';
+    proto='⚠ La autorización vence el '+p.vencimiento+'. Recordar a la autoridad correspondiente que debe renovarla.';
+  }else if(ok){
+    selloKey='ok';
+  }else if(fallecido){
+    selloKey='fall';
+    proto='Si alguien ingresa por motivo del difunto/a, retenerlo/a en el puesto y consultar con personal autorizado antes de permitir el ingreso.';
+  }else if(grave){
+    selloKey='grave';
+    proto='Acceso denegado. Notificar de inmediato a personal autorizado.';
+  }else{
+    selloKey='no';
+    const esEgreso = p.motivoBaja==='Egreso Definitivo del Hogar';
+    proto=esEgreso
+      ? 'Esta persona egresó definitivamente del hogar. Para cualquier ingreso consultar con personal autorizado.'
+      : 'Esta persona fue dada de baja. No permitir el ingreso. Consultar con personal autorizado.';
+  }
+
+  const rov=document.getElementById('rov');
+  rov.className=`rov show c-${clase}`;
+  rov.scrollTop=0;
+
+  // Sello
+  document.getElementById('rSello').innerHTML=SELLOS[selloKey];
+
+  // Nombre y DNI
+  txt('rNombre',p.nombre);
+  if(p.dni){
+    txt('rDni','DNI '+p.dni+(p.tel?'  -  '+p.tel:''));
+  }else{
+    document.getElementById('rDni').innerHTML='<span style="background:rgba(255,180,0,.25);color:#ffe066;border:1px solid rgba(255,180,0,.4);border-radius:6px;padding:2px 10px;font-size:13px;font-weight:700">⚠ DNI no cargado</span>'+(p.tel?'  '+p.tel:'');
+  }
+
+  // ── Tarjeta según padrón ──
+  let secciones=[];
+
+  if(p.padron==='bagala'){
+    let s1=[];
+    s1.push(fila('Padrón','Personal Bagala'+EMPRESA_DISPLAY(p.bTipo)));
+    if(p.bArea)    s1.push(fila('Área de trabajo',p.bArea));
+    if(p.bHorario) s1.push(fila('Turno / Acceso',p.bHorario));
+    if(p.bCargo)   s1.push(fila('Cargo',p.bCargo));
+    secciones.push({titulo:ok?'Identificación':'Datos',filas:s1});
+    if(!ok){
+      const exLabel='Ex '+( p.bTipo||'empleado/a')+' — Bagala S.A.';
+      secciones.push({titulo:'No autorizado/a',filas:[
+        fila('',exLabel,true),
+        fila('Motivo de baja',p.motivoBaja||'No informado'),
+        p.bajaFecha?fila('Fecha de baja',p.bajaFecha):'',
+      ].filter(Boolean)});
+    }
+    if(p.obs) secciones.push({titulo:'Observaciones',filas:[fila('',p.obs,true)]});
+
+  }else if(p.padron==='municipal'){
+    let s1=[];
+    s1.push(fila('Padrón','Empleado Municipal'));
+    if(p.mCargo) s1.push(fila('Cargo / Área',p.mCargo));
+    if(p.mRef==='Sí') s1.push(fila('Rol','Referente / Autoridad del Hogar'));
+    if(p.mTurno) s1.push(fila('Turno habilitado',p.mTurno));
+    secciones.push({titulo:ok?'Identificación':'Datos',filas:s1});
+    if(!ok&&p.motivoBaja) secciones.push({titulo:'Motivo de baja',filas:[fila('',p.motivoBaja,true),p.bajaFecha?fila('Fecha',p.bajaFecha):''].filter(Boolean)});
+    if(p.obs) secciones.push({titulo:'Observaciones',filas:[fila('',p.obs,true)]});
+
+  }else if(p.padron==='residente'){
+    // Salida restringida va PRIMERO si aplica
+    if(ok&&p.rSal==='Salida Restringida'){
+      secciones.push({titulo:'⚠ ATENCIÓN — CONDICIÓN DE SALIDA',chip:{libre:false,texto:'SALIDA RESTRINGIDA'}});
+    }
+    let s1=[];
+    s1.push(fila('Padrón','Residente del Hogar'));
+    if(p.rPab) s1.push(fila('Pabellón',p.rPab));
+    secciones.push({titulo:'Identificación',filas:s1});
+    if(ok&&p.rSal==='Salida Libre'){
+      secciones.push({titulo:'Condición de salida',chip:{libre:true,texto:'SALIDA LIBRE'}});
+    }
+    if(!ok&&p.motivoBaja) secciones.push({titulo:'Motivo de baja',filas:[fila('',p.motivoBaja,true),p.bajaFecha?fila('Fecha',p.bajaFecha):''].filter(Boolean)});
+    if(p.obs) secciones.push({titulo:'Observaciones',filas:[fila('',p.obs,true)]});
+
+  }else if(p.padron==='externo'){
+    let s1=[];
+    s1.push(fila('Padrón','Persona Externa Autorizada'));
+    if(p.eTit)  s1.push(fila('Relación',p.eTit));
+    if(p.eRes)  s1.push(fila('Visita a',p.eRes));
+    if(p.eTipo) s1.push(fila('Tipo de visita',p.eTipo));
+    if(p.eAut)  s1.push(fila('Autorizado por',p.eAut));
+    secciones.push({titulo:ok?'Identificación':'Datos',filas:s1});
+    if(!ok&&p.motivoBaja) secciones.push({titulo:'Motivo de baja',filas:[fila('',p.motivoBaja,true),p.bajaFecha?fila('Fecha',p.bajaFecha):''].filter(Boolean)});
+    if(p.obs) secciones.push({titulo:'Observaciones',filas:[fila('',p.obs,true)]});
+
+  }else if(p.padron==='contratista'){
+    let s1=[];
+    s1.push(fila('Padrón','Contratista Eventual'));
+    if(p.cArea)           s1.push(fila('Área / Servicio',p.cArea));
+    if(p.cAutorizadoPor)  s1.push(fila('Autorizado por',p.cAutorizadoPor));
+    if(p.cAgente)         s1.push(fila('Agente autorizador',p.cAgente));
+    if(p.cCondicion)      s1.push(fila('Condición de acceso',p.cCondicion));
+    secciones.push({titulo:ok?'Identificación':'Datos',filas:s1});
+    if(!ok&&p.motivoBaja) secciones.push({titulo:'Motivo de baja',filas:[fila('',p.motivoBaja,true),p.bajaFecha?fila('Fecha',p.bajaFecha):''].filter(Boolean)});
+    if(p.obs) secciones.push({titulo:'Observaciones',filas:[fila('',p.obs,true)]});
+  }
+
+  // ── Categoría principal (bloque grande) ──
+  const catEl=document.getElementById('rCat');
+  const catTit=document.getElementById('rCatTitulo');
+  const catSu=document.getElementById('rCatSub');
+
+  if(p.padron==='bagala'){
+    const tipMap={'Empleado de Planta Permanente':'Planta Permanente','Referente de la Firma Bagala':'Referente','Autoridades Externas de Bagala':'Autoridad','Contratista Eventual':'Contratista'};
+    catTit.textContent=ok?'Empleado Bagala':'Ex Empleado Bagala';
+    catSu.textContent=ok?(tipMap[p.bTipo]||p.bTipo||''):'';
+  }else if(p.padron==='municipal'){
+    catTit.textContent=ok?'Empleado Municipal':'Ex Empleado Municipal';
+    catSu.textContent='Planta Permanente';
+  }else if(p.padron==='residente'){
+    const esFallecido=p.motivoBaja==='Fallecimiento';
+    catTit.textContent=ok?'Residente del Hogar':(esFallecido?'Residente Fallecido/a':'Ex Residente');
+    catSu.textContent='';
+  }else if(p.padron==='externo'){
+    catTit.textContent=ok?'Externo':'Ex Persona Externa';
+    catSu.textContent=(p.eTit||'').toUpperCase();
+  }else if(p.padron==='contratista'){
+    catTit.textContent=ok?'Contratista':'Ex Contratista';
+    catSu.textContent=(p.cArea||'').toUpperCase();
+  }
+  catEl.style.display='block';
+
+  // ── Chip salida restringida (residente) ──
+  const chipWrap=document.getElementById('rChipWrap');
+  const chipEl=document.getElementById('rChip');
+  if(p.padron==='residente'&&ok&&p.rSal){
+    const libre=p.rSal==='Salida Libre';
+    chipEl.className='rov-chip '+(libre?'chip-libre':'chip-rest');
+    chipEl.textContent=(libre?'🟢 ':'🔴 ')+p.rSal.toUpperCase();
+    chipWrap.style.display='block';
+  }else{chipWrap.style.display='none';}
+
+  // ── Filas de datos ──
+  const datos=[];
+  if(ok){
+    if(p.padron==='bagala'){
+      if(p.bArea)    datos.push(['Área de trabajo',p.bArea]);
+      if(p.bHorario) datos.push(['Turno / Acceso',p.bHorario]);
+      if(p.bCargo)   datos.push(['Cargo',p.bCargo]);
+    }else if(p.padron==='municipal'){
+      if(p.mCargo) datos.push(['Área de trabajo',p.mCargo]);
+      if(p.mTurno) datos.push(['Turno / Acceso',p.mTurno]);
+      if(p.mRef==='Sí') datos.push(['Rol','REFERENTE / AUTORIDAD DEL HOGAR']);
+    }else if(p.padron==='residente'){
+      if(p.rPab) datos.push(['Pabellón',p.rPab]);
+    }else if(p.padron==='externo'){
+      // Para Buffet no mostrar "Visita a" — el eTit ya es suficiente
+      if(p.eRes && p.eTit!=='Buffet') datos.push(['Visita a',p.eRes]);
+      if(p.eTipo) datos.push(['Tipo de visita',p.eTipo]);
+      if(p.eAut)  datos.push(['Autorizado por',p.eAut]);
+      if(p.vencimiento) datos.push(['__venc__',p.vencimiento]);
+    }else if(p.padron==='contratista'){
+      if(p.cCondicion)     datos.push(['Condición de acceso',p.cCondicion]);
+      if(p.cAutorizadoPor) datos.push(['Autorizado por',p.cAutorizadoPor]);
+      if(p.cAgente)        datos.push(['Agente autorizador',p.cAgente]);
+      if(p.vencimiento) datos.push(['__venc__',p.vencimiento]);
+    }
+    // Fecha de alta con badge NUEVO si es reciente
+    if(p.altaFecha) datos.push(['__alta__', p.altaFecha]);
+  }else{
+    // Baja: fallecidos tienen tratamiento especial
+    const esFallecidoDatos = p.motivoBaja==='Fallecimiento';
+    if(esFallecidoDatos){
+      datos.push(['__fallecimiento__', p.bajaFecha||'—']);
+      // Sin motivo — ya queda claro con la categoría y la fecha
+    }else{
+      datos.push(['__baja__', p.bajaFecha||'—']);
+      datos.push(['Motivo',(p.motivoBaja||'No informado').toUpperCase()]);
+    }
+  }
+  if(p.obs) datos.push(['Obs.',p.obs]);
+
+  const datosEl=document.getElementById('rDatos');
+  if(datos.length){
+    datosEl.innerHTML=datos.map(d=>{
+      if(d[0]==='__alta__'){
+        return`<div class="rov-fila"><span class="rov-fila-lbl">Alta</span><span class="rov-fila-val">${d[1]}${badgeNuevo(d[1])}</span></div>`;
+      }
+      if(d[0]==='__baja__'){
+        return`<div class="rov-fila"><span class="rov-fila-lbl">Dado de baja</span><span class="rov-fila-val">${d[1]}${badgeNuevo(d[1])}</span></div>`;
+      }
+      if(d[0]==='__fallecimiento__'){
+        return`<div class="rov-fila"><span class="rov-fila-lbl">Fecha de fallecimiento</span><span class="rov-fila-val">${d[1]}${badgeNuevo(d[1])}</span></div>`;
+      }
+      if(d[0]==='__venc__'){
+        const dias=diasHasta(d[1]);
+        let vLabel='',vColor='';
+        if(dias!==null&&dias<0){vLabel='<span style="background:rgba(220,80,0,.25);color:#e08040;border:1px solid rgba(220,80,0,.4);border-radius:5px;font-size:11px;font-weight:800;padding:2px 7px;margin-left:6px">VENCIDA</span>';vColor='#e08040';}
+        else if(dias!==null&&dias<=10){vLabel='<span style="background:rgba(200,160,0,.2);color:#c8a000;border:1px solid rgba(200,160,0,.35);border-radius:5px;font-size:11px;font-weight:800;padding:2px 7px;margin-left:6px">'+dias+'d</span>';vColor='#c8a000';}
+        return`<div class="rov-fila"><span class="rov-fila-lbl">Autorización hasta</span><span class="rov-fila-val" style="${vColor?'color:'+vColor:''}">${d[1]}${vLabel}</span></div>`;
+      }
+      return`<div class="rov-fila"><span class="rov-fila-lbl">${d[0]}</span><span class="rov-fila-val">${d[1]}</span></div>`;
+    }).join('');
+    datosEl.style.display='block';
+  }else{datosEl.style.display='none';}
+
+  // ── Puestos ──
+  const puestosEl=document.getElementById('rPuestos');
+  const ps=p.puestos||[];
+  if(ok&&ps.length){
+    txt('rPuestosVal',ps.join('   ·   '));
+    const p4m=p.p4mod&&p.p4mod.length;
+    document.getElementById('rP4mod').style.display=p4m?'block':'none';
+    if(p4m)txt('rP4mod','Modalidad P4: '+p.p4mod.join(', '));
+    puestosEl.style.display='block';
+  }else{puestosEl.style.display='none';}
+
+  // ── Protocolo ──
+  const protoEl=document.getElementById('rProto');
+  if(proto){txt('rProtoTxt',proto);protoEl.style.display='block';}
+  else{protoEl.style.display='none';}
+
+  // ── Papel ──
+  const papelEl=document.getElementById('rPapel');
+  if(p.carpeta||p.hoja){
+    txt('rPapelVal','Carpeta '+(p.carpeta||'—')+'   ·   Hoja '+(p.hoja||'—'));
+    papelEl.style.display='block';
+  }else{papelEl.style.display='none';}
+}
+
+function mostrarNoRegistrado(q){
+  const rov=document.getElementById('rov');
+  rov.className='rov show c-amarillo';
+  rov.scrollTop=0;
+  document.getElementById('rSello').innerHTML=SELLOS.warn;
+  txt('rNombre','"'+q+'"');
+  txt('rDni','No figura en el padrón');
+  // Categoría
+  const catEl=document.getElementById('rCat');
+  document.getElementById('rCatTitulo').textContent='NO REGISTRADO';
+  document.getElementById('rCatSub').textContent='';
+  catEl.style.display='block';
+  // Ocultar resto
+  document.getElementById('rChipWrap').style.display='none';
+  document.getElementById('rDatos').style.display='none';
+  document.getElementById('rPuestos').style.display='none';
+  document.getElementById('rPapel').style.display='none';
+  txt('rProtoTxt','Esta persona no figura en el padrón. No permitir el ingreso. Consultar con personal autorizado.');
+  document.getElementById('rProto').style.display='block';
+}
+
+function cerrar(){document.getElementById('rov').className='rov';}
+
+// ══════════════════════════════════════════
+// HELPERS
+// ══════════════════════════════════════════
+function EMPRESA_DISPLAY(tipo){
+  const map={
+    'Empleado de Planta Permanente':'Planta Permanente',
+    'Referente de la Firma Bagala':'Referente',
+    'Autoridades Externas de Bagala':'Autoridad Bagala',
+  };
+  return tipo?' · '+(map[tipo]||tipo):'';
+}
+function txt(id,t){document.getElementById(id).textContent=t;}
+function fila(lbl,val,full){
+  if(full){
+    return`<div class="rov-dato"><span class="rov-val-full">${val}</span></div>`;
+  }
+  return`<div class="rov-dato"><span class="rov-lbl">${lbl}</span><span class="rov-val">${val}</span></div>`;
+}
+
+// ══════════════════════════════════════════
+// INICIO
+// ══════════════════════════════════════════
+sincronizar();
+setInterval(()=>{sincronizar();},90000);
+</script>
+</body>
+</html>
