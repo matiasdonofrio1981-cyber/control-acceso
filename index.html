@@ -104,6 +104,24 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
 /* CERRAR */
 .btn-cerrar{background:rgba(255,255,255,.15);border:2px solid rgba(255,255,255,.35);border-radius:14px;color:#fff;font-size:15px;font-weight:800;font-family:var(--sans);padding:14px 52px;cursor:pointer;letter-spacing:1px;text-transform:uppercase;margin-bottom:20px;transition:background .15s}
 .btn-cerrar:active{background:rgba(255,255,255,.25)}
+.btn-nov{position:relative;background:var(--bg2);border:1px solid var(--border2);border-radius:10px;width:38px;height:38px;display:flex;align-items:center;justify-content:center;cursor:pointer;font-size:18px;flex-shrink:0}
+.btn-nov:active{background:var(--bg3)}
+.nov-badge{position:absolute;top:-5px;right:-5px;background:#e06000;color:#fff;border-radius:10px;font-size:10px;font-weight:800;padding:2px 5px;min-width:16px;text-align:center;display:none}
+.nov-ov{display:none;position:fixed;inset:0;z-index:85;background:var(--bg);flex-direction:column}
+.nov-ov.show{display:flex}
+.nov-hdr{background:var(--bg2);border-bottom:1px solid var(--border);padding:14px 16px;display:flex;align-items:center;gap:12px;flex-shrink:0}
+.nov-hdr-titulo{font-size:16px;font-weight:800;flex:1}
+.nov-hdr-sub{font-size:11px;color:var(--text2);font-family:var(--mono)}
+.btn-nov-cerrar{background:var(--bg3);border:1px solid var(--border2);border-radius:8px;color:var(--text2);font-size:13px;font-family:var(--sans);font-weight:700;padding:7px 14px;cursor:pointer}
+.nov-content{flex:1;overflow-y:auto;padding:14px 16px 40px}
+.nov-seccion{margin-bottom:18px}
+.nov-sec-titulo{font-size:11px;font-weight:700;color:var(--text3);text-transform:uppercase;letter-spacing:.7px;margin-bottom:8px;padding-bottom:6px;border-bottom:1px solid var(--border)}
+.nov-item{display:flex;align-items:center;gap:10px;padding:10px 12px;border-radius:10px;margin-bottom:6px;cursor:pointer}
+.nov-item:active{opacity:.8}
+.nov-nombre{font-size:13px;font-weight:600;color:var(--text);flex:1;min-width:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.nov-badge-item{font-size:10px;font-weight:800;padding:3px 7px;border-radius:5px;flex-shrink:0;white-space:nowrap}
+.nov-fecha{font-size:11px;color:var(--text2);font-family:var(--mono);flex-shrink:0}
+.nov-vacia{text-align:center;padding:3rem 1rem;color:var(--text3);font-family:var(--mono);font-size:13px}
 
 /* VENCIMIENTO */
 .c-naranja{background:linear-gradient(155deg,#7a3500 0%,#c05a00 100%)}
@@ -183,14 +201,31 @@ body{font-family:var(--sans);background:var(--bg);color:var(--text);display:flex
       </div>
     </div>
   </div>
-  <div class="search-wrap">
-    <span class="s-ico">⌕</span>
-    <input class="search-input" type="text" id="srch"
-      placeholder="DNI o apellido y nombre (mín. 4 letras)…"
-      oninput="buscar(this)" autocomplete="off"
-      autocorrect="off" spellcheck="false">
-    <button class="s-clr" id="sclr" onclick="limpiar()">✕</button>
+  <div style="display:flex;gap:8px;align-items:center">
+    <div class="search-wrap" style="flex:1">
+      <span class="s-ico">⌕</span>
+      <input class="search-input" type="text" id="srch"
+        placeholder="DNI o apellido y nombre (mín. 4 letras)…"
+        oninput="buscar(this)" autocomplete="off"
+        autocorrect="off" spellcheck="false">
+      <button class="s-clr" id="sclr" onclick="limpiar()">✕</button>
+    </div>
+    <button class="btn-nov" onclick="abrirNovedades()" title="Novedades">
+      🔔<span class="nov-badge" id="novBadge"></span>
+    </button>
   </div>
+</div>
+
+<!-- OVERLAY NOVEDADES -->
+<div class="nov-ov" id="novOv">
+  <div class="nov-hdr">
+    <div>
+      <div class="nov-hdr-titulo">🔔 Novedades</div>
+      <div class="nov-hdr-sub">Últimos 30 días — todos los padrones</div>
+    </div>
+    <button class="btn-nov-cerrar" onclick="cerrarNovedades()">Cerrar</button>
+  </div>
+  <div class="nov-content" id="novContent"></div>
 </div>
 
 <!-- CONTENT -->
@@ -352,43 +387,107 @@ function estadoVencimiento(p){
   if(dias<=10) return{tipo:'proxima', dias, label:'Vence en '+dias+' día'+(dias===1?'':'s')};
   return null;
 }
-function renderAlertas(){
-  const vencidas=[], proximas=[], bajaReciente=[];
-
+function abrirNovedades(){
+  renderNovedades();
+  document.getElementById('novOv').classList.add('show');
+}
+function cerrarNovedades(){
+  document.getElementById('novOv').classList.remove('show');
+}
+function renderNovedades(){
+  const fallecidos=[],bajas=[],vencidas=[],proximas=[];
   padron.forEach(p=>{
-    // Solo externos y contratistas
-    if(!['externo','contratista'].includes(p.padron)) return;
-
-    // 1. Bajas recientes (últimos 10 días)
-    if(p.situacion==='Dado de Baja'&&p.bajaFecha){
-      const dias=diasHasta(p.bajaFecha);
-      if(dias!==null&&dias>=-10&&dias<=0){
-        bajaReciente.push({p,diasBaja:Math.abs(dias)});
-      }
-      return; // no procesar vencimiento si está de baja
+    if(p.motivoBaja==='Fallecimiento'&&p.bajaFecha){
+      const d=diasHasta(p.bajaFecha);
+      if(d!==null&&d>=-30&&d<=0) fallecidos.push({p,da:Math.abs(d)});
+      return;
     }
+    if(p.situacion==='Dado de Baja'&&p.bajaFecha){
+      const d=diasHasta(p.bajaFecha);
+      if(d!==null&&d>=-30&&d<=0) bajas.push({p,da:Math.abs(d)});
+      return;
+    }
+    if(['externo','contratista'].includes(p.padron)&&p.situacion==='Activo'){
+      const ev=estadoVencimiento(p);
+      if(!ev) return;
+      if(ev.tipo==='vencida') vencidas.push({p,ev});
+      else proximas.push({p,ev});
+    }
+  });
+  fallecidos.sort((a,b)=>a.da-b.da);
+  bajas.sort((a,b)=>a.da-b.da);
+  vencidas.sort((a,b)=>b.ev.dias-a.ev.dias);
+  proximas.sort((a,b)=>a.ev.dias-b.ev.dias);
+  const total=fallecidos.length+bajas.length+vencidas.length+proximas.length;
+  const badge=document.getElementById('novBadge');
+  if(badge){badge.style.display=total>0?'block':'none';badge.textContent=total>9?'9+':String(total);}
+  const cnt=document.getElementById('novContent');
+  if(!cnt) return;
+  if(!total){cnt.innerHTML='<div class="nov-vacia">✓ Sin novedades en los últimos 30 días</div>';return;}
+  const cuando=d=>d===0?'Hoy':d===1?'Ayer':'Hace '+d+'d';
+  let html='';
+  if(fallecidos.length){
+    html+='<div class="nov-seccion"><div class="nov-sec-titulo">🕊️ Fallecimientos recientes</div>';
+    fallecidos.forEach(({p,da})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="nov-item" style="background:rgba(60,65,90,.3);border:1px solid rgba(100,110,150,.3)" onclick="cerrarNovedades();mostrarResultado(padron[${idx}])">
+        <span class="nov-nombre">${p.nombre}</span>
+        <span class="nov-badge-item" style="background:rgba(80,90,120,.3);color:#9099c0">${etiqPadron(p.padron)}</span>
+        <span class="nov-fecha">${cuando(da)}</span></div>`;
+    });
+    html+='</div>';
+  }
+  if(bajas.length){
+    html+='<div class="nov-seccion"><div class="nov-sec-titulo">🚫 Bajas recientes</div>';
+    bajas.forEach(({p,da})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="nov-item" style="background:rgba(140,0,0,.15);border:1px solid rgba(200,50,50,.3)" onclick="cerrarNovedades();mostrarResultado(padron[${idx}])">
+        <span class="nov-nombre">${p.nombre}</span>
+        <span class="nov-badge-item" style="background:rgba(180,0,0,.2);color:#e05040">${etiqPadron(p.padron)}</span>
+        <span class="nov-fecha">${cuando(da)}</span></div>`;
+    });
+    html+='</div>';
+  }
+  if(vencidas.length){
+    html+='<div class="nov-seccion"><div class="nov-sec-titulo">⛔ Autorizaciones vencidas</div>';
+    vencidas.forEach(({p,ev})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="nov-item" style="background:rgba(180,70,0,.15);border:1px solid rgba(220,100,0,.35)" onclick="cerrarNovedades();mostrarResultado(padron[${idx}])">
+        <span class="nov-nombre">${p.nombre}</span>
+        <span class="nov-badge-item" style="background:rgba(220,80,0,.25);color:#e08040">VENCIDA</span>
+        <span class="nov-fecha">${p.vencimiento}</span></div>`;
+    });
+    html+='</div>';
+  }
+  if(proximas.length){
+    html+='<div class="nov-seccion"><div class="nov-sec-titulo">⚠️ Por vencer (próximos 10 días)</div>';
+    proximas.forEach(({p,ev})=>{
+      const idx=padron.indexOf(p);
+      html+=`<div class="nov-item" style="background:rgba(180,130,0,.12);border:1px solid rgba(220,180,0,.3)" onclick="cerrarNovedades();mostrarResultado(padron[${idx}])">
+        <span class="nov-nombre">${p.nombre}</span>
+        <span class="nov-badge-item" style="background:rgba(200,160,0,.2);color:#c8a000">${ev.label}</span>
+        <span class="nov-fecha">${p.vencimiento}</span></div>`;
+    });
+    html+='</div>';
+  }
+  cnt.innerHTML=html;
+}
 
-    // 2. Vencimientos (solo activos)
+function renderAlertas(){
+  const vencidas=[],proximas=[];
+  padron.forEach(p=>{
+    if(!['externo','contratista'].includes(p.padron)||p.situacion!=='Activo') return;
     const ev=estadoVencimiento(p);
     if(!ev) return;
     if(ev.tipo==='vencida') vencidas.push({p,ev});
     else proximas.push({p,ev});
   });
-
-  // Ordenar
   vencidas.sort((a,b)=>b.ev.dias-a.ev.dias);
   proximas.sort((a,b)=>a.ev.dias-b.ev.dias);
-  bajaReciente.sort((a,b)=>a.diasBaja-b.diasBaja);
-
   const panel=document.getElementById('panelAlertas');
   if(!panel) return;
-  if(!vencidas.length&&!proximas.length&&!bajaReciente.length){
-    panel.innerHTML='';return;
-  }
-
+  if(!vencidas.length&&!proximas.length){panel.innerHTML='';renderNovedades();return;}
   let html='<div class="alertas">';
-
-  // Vencidas
   if(vencidas.length){
     html+='<div class="alertas-titulo">⛔ Autorizaciones vencidas</div>';
     vencidas.forEach(({p,ev})=>{
@@ -397,12 +496,9 @@ function renderAlertas(){
         <div class="alerta-dot dot-naranja"></div>
         <span class="alerta-nombre">${p.nombre}</span>
         <span class="alerta-badge badge-vencida">VENCIDA</span>
-        <span class="alerta-fecha">${p.vencimiento}</span>
-      </div>`;
+        <span class="alerta-fecha">${p.vencimiento}</span></div>`;
     });
   }
-
-  // Por vencer
   if(proximas.length){
     html+='<div class="alertas-titulo" style="margin-top:10px">⚠️ Por vencer (próximos 10 días)</div>';
     proximas.forEach(({p,ev})=>{
@@ -411,29 +507,12 @@ function renderAlertas(){
         <div class="alerta-dot dot-amarillo"></div>
         <span class="alerta-nombre">${p.nombre}</span>
         <span class="alerta-badge badge-proxima">${ev.label}</span>
-        <span class="alerta-fecha">${p.vencimiento}</span>
-      </div>`;
+        <span class="alerta-fecha">${p.vencimiento}</span></div>`;
     });
   }
-
-  // Bajas recientes
-  if(bajaReciente.length){
-    html+='<div class="alertas-titulo" style="margin-top:10px">🚫 Dados de baja recientemente</div>';
-    bajaReciente.forEach(({p,diasBaja})=>{
-      const idx=padron.indexOf(p);
-      const label=diasBaja===0?'Hoy':diasBaja===1?'Ayer':'Hace '+diasBaja+'d';
-      const etiq=p.padron==='contratista'?'Contratista':'Externo';
-      html+=`<div class="alerta-item" style="background:rgba(180,0,0,.12);border:1px solid rgba(220,50,50,.3)" onclick="mostrarResultado(padron[${idx}])">
-        <div class="alerta-dot" style="background:#cc2200;box-shadow:0 0 8px rgba(200,30,0,.5)"></div>
-        <span class="alerta-nombre">${p.nombre}</span>
-        <span class="alerta-badge" style="background:rgba(200,30,0,.2);color:#e05040;border:1px solid rgba(200,30,0,.4)">${etiq} · ${p.motivoBaja||'Baja'}</span>
-        <span class="alerta-fecha">${label}</span>
-      </div>`;
-    });
-  }
-
   html+='</div>';
   panel.innerHTML=html;
+  renderNovedades();
 }
 
 function parsearFecha(f){
